@@ -1,46 +1,28 @@
 <?php
-// File: database/migrations/XXXX_XX_XX_upgrade_audio_data_to_mediumblob.php
+
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     *
-     * Mengubah tipe kolom 'audio_data' dari BLOB (65KB max)
-     * menjadi MEDIUMBLOB (16MB max) agar audio file muat.
-     * 
-     * BLOB Types Comparison:
-     * - TINYBLOB:   255 bytes
-     * - BLOB:       65 KB (default)
-     * - MEDIUMBLOB: 16 MB ✅ (recommended untuk audio)
-     * - LONGBLOB:   4 GB (overkill)
-     */
+
     public function up(): void
-    {
-        // Cek apakah tabel ada dulu
-        if (!Schema::hasTable('listening_questions')) {
-            throw new \Exception('Table listening_questions does not exist. Run base migration first.');
-        }
-
-        // Upgrade ke MEDIUMBLOB
-        DB::statement('ALTER TABLE listening_questions MODIFY audio_data MEDIUMBLOB NULL');
-        
-        // Log untuk tracking
-        \Log::info('✅ listening_questions.audio_data upgraded to MEDIUMBLOB (16MB max)');
+  
+{
+    // Gunakan DB::statement karena tipe data BLOB di MySQL berbeda dengan BYTEA di PostgreSQL
+    if (config('database.default') === 'pgsql') {
+        DB::statement('ALTER TABLE listening_questions ALTER COLUMN audio_data TYPE BYTEA');
+    } else {
+        Schema::table('listening_questions', function (Blueprint $table) {
+            $table->mediumBlob('audio_data')->nullable()->change();
+        });
     }
+}
 
-    /**
-     * Reverse the migrations.
-     *
-     * Mengembalikan ke BLOB standar (65KB).
-     * ⚠️ WARNING: Data audio yang > 65KB akan TRUNCATED!
-     */
     public function down(): void
     {
-        // ⚠️ CRITICAL: Backup & delete data yang > 65KB sebelum downgrade
+        
         
         // 1. Hitung file yang akan terpotong
         $largeFiles = DB::table('listening_questions')
