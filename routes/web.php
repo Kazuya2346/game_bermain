@@ -78,7 +78,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     
     // Dashboard
     Route::get('/dashboard', function() {
-        return view('dashboard', [
+        return view('admin.dashboard', [
             'totalUsers' => \App\Models\User::count(),
             'totalGames' => \App\Models\Game::count(),
             'totalQuestions' => \App\Models\Question::count(),
