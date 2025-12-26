@@ -57,26 +57,27 @@ class ListeningAudioSeeder extends Seeder
     ];
 
     public function run(): void
-    {
-        $this->command->info('🎵 Memulai Import Audio Listening Questions...');
-        $this->command->newLine();
+{
+    $this->command->info('🎵 Memulai Import Audio Listening Questions...');
+    $this->command->newLine();
 
-        try {
-            $this->truncateTable();
-            $audioPath = storage_path('app/listening_audios');
+    try {
+        $this->truncateTable();
+        
+        // UBAH BARIS INI: Dari storage_path ke public_path
+        $audioPath = public_path('audio/listening_audios'); 
 
-            if (!$this->validateAudioPath($audioPath)) {
-                return;
-            }
-
-            $stats = $this->processAudioFiles($audioPath);
-            $this->displayResults($stats);
-
-        } catch (Exception $e) {
-            $this->command->error("❌ Error: {$e->getMessage()}");
-            $this->command->error("Stack trace: {$e->getTraceAsString()}");
+        if (!$this->validateAudioPath($audioPath)) {
+            return;
         }
+
+        $stats = $this->processAudioFiles($audioPath);
+        $this->displayResults($stats);
+
+    } catch (Exception $e) {
+        $this->command->error("❌ Error: {$e->getMessage()}");
     }
+}
 
     private function truncateTable(): void
     {
