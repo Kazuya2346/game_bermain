@@ -22,3 +22,7 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Izinkan folder audio terkirim ke server
+!storage/app/listening_audios/
+!storage/app/listening_audios/**

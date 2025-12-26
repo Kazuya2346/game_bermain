@@ -2,3 +2,7 @@
 !private/
 !public/
 !.gitignore
+
+# Batalkan pengabaian untuk folder audio game
+!listening_audios/
+!listening_audios/**
