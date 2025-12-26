@@ -81,9 +81,15 @@ class ListeningAudioSeeder extends Seeder
     private function truncateTable(): void
     {
         try {
-            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
-            ListeningQuestion::truncate();
-            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+            if (config('database.default') === 'pgsql') {
+                // Perintah khusus PostgreSQL (Koyeb/Neon)
+                DB::statement('TRUNCATE TABLE listening_questions RESTART IDENTITY CASCADE');
+            } else {
+                // Perintah standar MySQL (Lokal MacBook)
+                DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+                ListeningQuestion::truncate();
+                DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+            }
             $this->command->info('✓ Tabel listening_questions berhasil dikosongkan.');
         } catch (Exception $e) {
             throw new Exception("Gagal truncate tabel: {$e->getMessage()}");
@@ -129,7 +135,7 @@ class ListeningAudioSeeder extends Seeder
 
         $files = [];
         foreach (self::AUDIO_FORMATS as $format) {
-            $foundFiles = glob("{$audioPath}/*.{$format}"); // ✅ DIPERBAIKI: $audioPath bukan $path
+            $foundFiles = glob("{$audioPath}/*.{$format}");
             if (is_array($foundFiles) && !empty($foundFiles)) {
                 $files = array_merge($files, $foundFiles);
             }
@@ -677,6 +683,7 @@ class ListeningAudioSeeder extends Seeder
         $this->command->info('  ✅ Perbaikan variabel $audioPath di processAudioFiles()');
         $this->command->info('  ✅ Logika penghitungan kata yang benar (termasuk 1 huruf)');
         $this->command->info('  ✅ Level Hard menggunakan Drag & Drop');
+        $this->command->info('  ✅ PostgreSQL support di fungsi truncateTable()');
         $this->command->info('═══════════════════════════════════════════════');
     }
 }
