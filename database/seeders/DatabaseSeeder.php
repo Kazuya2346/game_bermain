@@ -28,7 +28,7 @@ class DatabaseSeeder extends Seeder
 
             // 4. Game Listening (Audio)
             ListeningAudioSeeder::class,
-            UserSeeder::class
+           
         ]);
     }
 }
