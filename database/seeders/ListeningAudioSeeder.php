@@ -222,7 +222,7 @@ class ListeningAudioSeeder extends Seeder
         }
 
         try {
-            $audioData = @file_get_contents($filePath);
+            $audioData = basename($filePath);
             
             if ($audioData === false) {
                 throw new Exception("Tidak dapat membaca file audio");
