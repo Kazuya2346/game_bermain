@@ -106,7 +106,7 @@
     </div>
 
     <!-- Bulk Edit Form -->
-    <form action="{{ route('admin.users.bulk-update') }}" method="POST" id="bulkEditForm">
+    <form action="{{ route('admin.users.bulk.update') }}" method="POST" id="bulkEditForm">
         @csrf
         @method('PUT')
 
