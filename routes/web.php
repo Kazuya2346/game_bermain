@@ -88,14 +88,17 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     
     // User Management Routes
     Route::prefix('users')->name('users.')->group(function () {
+        // 1. Letakkan rute statis (BULK) di PALING ATAS
+        Route::get('/bulk/edit', [UserController::class, 'editBulk'])->name('edit.bulk');
+        Route::put('/bulk/update', [UserController::class, 'bulkUpdate'])->name('bulk.update');
+
+        // 2. Baru letakkan rute yang menggunakan parameter {user} (ID) di bawahnya
         Route::get('/', [UserController::class, 'index'])->name('index');
         Route::get('/create', [UserController::class, 'create'])->name('create');
         Route::post('/', [UserController::class, 'store'])->name('store');
         Route::get('/{user}', [UserController::class, 'show'])->name('show');
-        Route::get('/{user}/edit', [UserController::class, 'edit'])->name('edit'); // Edit single
-        Route::get('/bulk/edit', [UserController::class, 'editBulk'])->name('edit.bulk'); // Edit massal
-        Route::put('/{user}', [UserController::class, 'update'])->name('update'); // Update single
-        Route::put('/bulk/update', [UserController::class, 'bulkUpdate'])->name('bulk.update'); // Update massal
+        Route::get('/{user}/edit', [UserController::class, 'edit'])->name('edit'); 
+        Route::put('/{user}', [UserController::class, 'update'])->name('update'); 
         Route::delete('/{user}', [UserController::class, 'destroy'])->name('destroy');
     });
     
