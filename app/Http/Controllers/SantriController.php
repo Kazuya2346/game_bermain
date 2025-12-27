@@ -234,7 +234,7 @@ class SantriController extends Controller
             ->select(
                 DB::raw('DATE(created_at) as session_date'),
                 DB::raw('SUM(points_earned) as total_points'),
-                DB::raw('SUM(CASE WHEN is_correct = 1 THEN 1 ELSE 0 END) as correct_answers'),
+                DB::raw('SUM(CASE WHEN is_correct = true THEN 1 ELSE 0 END) as correct_answers'),
                 DB::raw('COUNT(*) as total_questions')
             )
             ->groupBy('session_date')

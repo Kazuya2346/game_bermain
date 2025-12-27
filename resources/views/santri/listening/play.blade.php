@@ -481,6 +481,7 @@ const API_ROUTES = {
     cancel: '{{ route('santri.listening.api.cancel') }}'
 };
 const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.content || '';
+const AUDIO_BASE_URL = "{{ asset('audio/listening_audios/') }}";
 
 // API Helper
 async function apiCall(url, method = 'GET', data = null) {
@@ -788,6 +789,12 @@ function listeningGame() {
                 correctAnswerDisplay: null,
             };
             
+            // PERUBAHAN: Gunakan audio_url langsung dari server atau buat URL
+            if (qData.audio_data && !qData.audio_url) {
+                // Jika server hanya mengirim nama file, buat URL lengkap
+                this.question.audio_url = AUDIO_BASE_URL + '/' + qData.audio_data;
+            }
+            
             if (this.level === 'sulit' && !qData.type.includes('drag_drop')) {
                 console.warn(`Level 'sulit' seharusnya menggunakan drag & drop, tetapi mendapat: ${qData.type}`);
             }
@@ -855,7 +862,7 @@ function listeningGame() {
             this.startTimer();
 
             this.$nextTick(() => {
-                if(qData.audio_url) {
+                if(this.question.audio_url) {
                     this.playAudio();
                 } else {
                     console.warn('Tidak ada audio_url untuk diputar.');
@@ -863,7 +870,7 @@ function listeningGame() {
             });
         },
 
-        // Play Audio
+        // Play Audio - DIPERBARUI untuk menggunakan file statis
         async playAudio() {
             if (this.isAudioLoading || !this.question.audio_url) {
                 console.warn('Cannot play audio: loading or no URL');
@@ -879,6 +886,7 @@ function listeningGame() {
                     throw new Error('Audio player tidak tersedia');
                 }
 
+                // PERUBAHAN: Gunakan URL audio langsung tanpa base64 decoding
                 audioPlayer.src = this.question.audio_url;
                 
                 await new Promise((resolve, reject) => {

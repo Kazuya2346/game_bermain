@@ -259,7 +259,8 @@ function gameResult() {
                         points: parseInt(rewards.points) || 0,
                         exp: parseInt(rewards.exp) || 0,
                         new_level: parseInt(rewards.new_level) || 1,
-                        level_up: Boolean(rewards.level_up)
+                        // PERUBAHAN PENTING: Gunakan nilai boolean langsung, bukan perbandingan dengan 1/0
+                        level_up: rewards.level_up === true || rewards.level_up === 'true' || rewards.level_up === 1
                     }
                 };
 
@@ -289,7 +290,8 @@ function gameResult() {
         },
 
         isLevelUp() {
-            return this.result.rewards.level_up && this.user.new_level > this.user.old_level;
+            // PERUBAHAN: Gunakan boolean langsung, bukan perbandingan dengan angka
+            return this.result.rewards.level_up === true && this.user.new_level > this.user.old_level;
         },
 
         getEmoji() {
