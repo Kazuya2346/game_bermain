@@ -38,9 +38,6 @@ class ListeningGameService
         ],
         'hard' => [
             'name' => 'صَعْب',
-            // ===============================================
-            // PERBAIKAN BUG LEVEL 'HARD' (SESUAI SEEDER)
-            // ===============================================
             'type' => 'multiple_choice', 
             'base_points' => 40,
             'time_limit' => 45,
@@ -104,16 +101,11 @@ class ListeningGameService
         $session = $this->resetQuestionState($session, $nextQuestionId);
         $this->saveSession($user->id, $session);
 
-        // ===============================================
-        // PERBAIKAN BUG MEMORI (SQL LOG)
-        // ===============================================
-        // Tentukan kolom yang HANYA kita perlukan (tanpa audio_data)
-        // ✅ TAMBAHKAN 'audio_data' JUGA
+        // Tentukan kolom yang diperlukan
         $columnsToSelect = [
             'id', 'level', 'question_text', 'correct_answer', 'answer_type',
             'option_a', 'option_b', 'option_c', 'option_d', 'exp_reward', 'word_count',
-            'audio_mime_type', // ← Sudah ada
-            'audio_data'       // ← TAMBAHKAN INI
+            'audio_data', // Sekarang berisi nama file, bukan BLOB
         ];
         
         $question = ListeningQuestion::select($columnsToSelect)
@@ -130,19 +122,19 @@ class ListeningGameService
         ];
     }
 
-    public function submitAnswer($userAnswer): array
+    public function submitAnswer($userAnswer, bool $timeUp = false): array
     {
         $user = Auth::user();
         $session = $this->getSession($user->id);
 
-        // Cek jika jawaban "TIME_UP" dari frontend
-        if (($userAnswer === "TIME_UP") || ($userAnswer['time_up'] ?? false)) {
+        // Cek jika jawaban "TIME_UP" dari frontend atau time_up flag
+        if ($userAnswer === "TIME_UP" || $timeUp) {
             $question = ListeningQuestion::find($session['current_question_id']);
             if (!$question) {
                 $question = new ListeningQuestion([
                     'id' => $session['current_question_id'],
                     'question_text' => 'Unknown (Time Up)',
-                    'exp_reward' => 0 // Tidak dapat exp jika soal tidak ditemukan
+                    'exp_reward' => 0
                 ]);
             }
             return $this->handleIncorrectAnswer($user, $session, $question, "TIME_UP", true);
@@ -190,50 +182,44 @@ class ListeningGameService
         ];
     }
 
-    // Di ListeningGameService.php
+    public function pauseGame(): array
+    {
+        $user = Auth::user();
+        $session = $this->getSession($user->id);
+        
+        return [
+            'status' => 'paused',
+            'message' => 'Game berhasil di-pause',
+            'session' => [
+                'current_index' => $session['current_index'],
+                'score' => $session['score'],
+                'streak' => $session['current_streak'],
+            ]
+        ];
+    }
 
-public function pauseGame(): array
-{
-    $user = Auth::user();
-    $session = $this->getSession($user->id);
-    
-    // Session sudah otomatis tersimpan di cache
-    // Tidak perlu action khusus
-    
-    return [
-        'status' => 'paused',
-        'message' => 'Game berhasil di-pause',
-        'session' => [
-            'current_index' => $session['current_index'],
-            'score' => $session['score'],
-            'streak' => $session['current_streak'],
-        ]
-    ];
-}
-
-public function resumeGame(): array
-{
-    $user = Auth::user();
-    $session = $this->getSession($user->id);
-    
-    // Ambil soal saat ini
-    $currentQuestionId = $session['current_question_id'];
-    $question = ListeningQuestion::findOrFail($currentQuestionId);
-    
-    return [
-        'status' => 'resumed',
-        'message' => 'Game berhasil dilanjutkan',
-        'session' => [
-            'level' => $session['level'],
-            'current_index' => $session['current_index'],
-            'total_questions' => count($session['question_ids']),
-            'score' => $session['score'],
-            'streak' => $session['current_streak'],
-        ],
-        'question' => $this->prepareQuestionData($question, $session['level']),
-    ];
-}
-
+    public function resumeGame(): array
+    {
+        $user = Auth::user();
+        $session = $this->getSession($user->id);
+        
+        // Ambil soal saat ini
+        $currentQuestionId = $session['current_question_id'];
+        $question = ListeningQuestion::findOrFail($currentQuestionId);
+        
+        return [
+            'status' => 'resumed',
+            'message' => 'Game berhasil dilanjutkan',
+            'session' => [
+                'level' => $session['level'],
+                'current_index' => $session['current_index'],
+                'total_questions' => count($session['question_ids']),
+                'score' => $session['score'],
+                'streak' => $session['current_streak'],
+            ],
+            'question' => $this->prepareQuestionData($question, $session['level']),
+        ];
+    }
 
     // ================================================================
     // PRIVATE METHODS - Session Management
@@ -306,12 +292,11 @@ public function resumeGame(): array
         $countToTake = min($shuffledIds->count(), $maxCount);
         $finalQuestionIds = $shuffledIds->take($countToTake)->all();
     
-        // ✅ PERBAIKAN: TAMBAHKAN KEDUA KOLOM INI
+        // Kolom yang diperlukan (audio_data sekarang hanya nama file)
         $columnsToSelect = [
             'id', 'level', 'question_text', 'correct_answer', 'answer_type',
             'option_a', 'option_b', 'option_c', 'option_d', 'exp_reward', 'word_count',
-            'audio_data',      // ← TAMBAHKAN
-            'audio_mime_type'  // ← TAMBAHKAN
+            'audio_data', // Nama file audio
         ];
     
         return ListeningQuestion::whereIn('id', $finalQuestionIds)
@@ -320,22 +305,22 @@ public function resumeGame(): array
             ->get();
     }
 
+    /**
+     * PERUBAHAN PENTING: Audio URL untuk file-based storage
+     * Sekarang audio_data hanya berisi nama file
+     */
     private function prepareQuestionData(ListeningQuestion $question, string $level): array
     {
         $config = self::GAME_CONFIG[$level];
         $wordCount = $question->word_count ?? $this->countWords($question->correct_answer);
         
-        // ====================================================================
-        // PERBAIKAN BUG LEVEL 'HARD': Baca tipe soal langsung dari database
-        // ====================================================================
-        $questionType = $question->answer_type; // <-- DIPERBAIKI
+        // Baca tipe soal langsung dari database
+        $questionType = $question->answer_type;
 
+        // PERUBAHAN: Gunakan audio_url dari model (sudah di-generate oleh accessor)
         $data = [
             'id' => $question->id,
-            // ===============================================
-            // PERBAIKAN BUG AUDIO - TYPO DIPERBAIKI
-            // ===============================================
-            'audio_url' => $question->audio_url, // <-- TYPO DIPERBAIKI: audio_url → audio_url
+            'audio_url' => $question->audio_url, // URL lengkap ke file audio
             'question_text' => $question->question_text,
             'type' => $questionType,
             'time_limit' => $config['time_limit'],
@@ -358,9 +343,6 @@ public function resumeGame(): array
         return $data;
     }
 
-    // ===============================================
-    // PERBAIKAN BUG: TAMBAH METHOD countWords YANG HILANG
-    // ===============================================
     private function countWords(string $text): int
     {
         $words = preg_split('/\s+/u', trim($text));
@@ -411,9 +393,6 @@ public function resumeGame(): array
 
     private function generateHint(ListeningQuestion $question): array
     {
-        // ====================================================================
-        // PERBAIKAN BUG LEVEL 'HARD': Baca tipe soal langsung dari database
-        // ====================================================================
         $questionType = $question->answer_type;
 
         switch ($questionType) {
@@ -444,9 +423,6 @@ public function resumeGame(): array
 
     private function validateAnswer(ListeningQuestion $question, $userAnswer): bool
     {
-        // ====================================================================
-        // PERBAIKAN BUG LEVEL 'HARD': Baca tipe soal langsung dari database
-        // ====================================================================
         $questionType = $question->answer_type;
 
         switch ($questionType) {
@@ -535,7 +511,6 @@ public function resumeGame(): array
         ];
     }
 
-    // ✅ PERBAIKAN KRITIS: handleIncorrectAnswer dengan field lengkap
     private function handleIncorrectAnswer(User $user, array $session, ListeningQuestion $question, $userAnswer, bool $isTimeUp = false): array
     {
         $session['attempts_left']--;
@@ -633,7 +608,7 @@ public function resumeGame(): array
 
     private function calculateStreakBonus(int $streak): int
     {
-        // Langsung cek dari terbesar ke terkecil (hard-coded)
+        // Langsung cek dari terbesar ke terkecil
         if ($streak >= 20) return 100;
         if ($streak >= 10) return 50;
         if ($streak >= 5) return 25;
@@ -670,9 +645,6 @@ public function resumeGame(): array
 
     private function getCorrectAnswerDisplay(ListeningQuestion $question, string $level): string|array
     {
-        // ====================================================================
-        // PERBAIKAN BUG LEVEL 'HARD': Baca tipe soal langsung dari database
-        // ====================================================================
         $questionType = $question->answer_type;
 
         switch ($questionType) {
@@ -681,8 +653,7 @@ public function resumeGame(): array
             case 'drag_drop_word':
                 return $this->splitToWords($question->correct_answer);
             case 'drag_drop_letter':
-                 // Fallback
-                return $this->splitToWords($question->correct_answer);
+                return $this->splitToLetters($question->correct_answer);
             default:
                 return $question->correct_answer;
         }
@@ -695,11 +666,6 @@ public function resumeGame(): array
         }
     }
 
-    /**
-     * ====================================================================
-     * PERBAIKAN BUG SUBMIT 500 (MASS ASSIGNMENT)
-     * ====================================================================
-     */
     private function saveGameSession(User $user, array $session, ListeningQuestion $question, $userAnswer, bool $isCorrect, int $timeElapsed, ?array $scoreData = null): void
     {
         $expEarned = $isCorrect ? ($question->exp_reward ?? 10) : 0;
@@ -717,22 +683,21 @@ public function resumeGame(): array
             'level_type'        => $level, 
             'question_text'     => $question->question_text,
             'user_answer'       => is_array($userAnswer) ? implode(' ', $userAnswer) : $userAnswer, 
-            'is_correct'        => $isCorrect,
+            'is_correct'        => $isCorrect, // PostgreSQL akan menerima boolean langsung
             'attempts'          => $attemptNumber,
             'time_taken'        => $timeElapsed,
             'points_earned'     => $scoreData['points'] ?? 0,
             'exp_earned'        => $expEarned,
-            'used_hint'         => $session['used_hint'] ?? false,
+            'used_hint'         => $session['used_hint'] ?? false, // Boolean untuk PostgreSQL
             'streak_at_time'    => $session['current_streak'] ?? 0,
         ]);
     }
 
-    // ✅ PERBAIKAN KRITIS: completeGame dengan format response konsisten
     private function completeGame(User $user, array $session): array
     {
         $this->updateUserStatistics($user, $session);
         
-        // ✅ TAMBAHAN BARU: Increment total accumulated points
+        // Increment total accumulated points
         $user->increment('total_accumulated_points', $session['score']);
         
         $this->updateLeaderboard($user);
@@ -746,6 +711,8 @@ public function resumeGame(): array
 
         $levelInfo = \App\Helpers\LevelSystem::getLevelInfo($updatedUser->experience_points ?? 0);
         $oldLevelInfo = \App\Helpers\LevelSystem::getLevelInfo(($updatedUser->experience_points ?? 0) - $totalExpGained);
+        
+        // PERUBAHAN: Gunakan perbandingan boolean yang benar untuk PostgreSQL
         $levelUp = $levelInfo['level'] > $oldLevelInfo['level'];
 
         $summary = [
@@ -761,6 +728,7 @@ public function resumeGame(): array
             'points' => $session['score'],
             'exp' => $totalExpGained,
             'new_level' => $levelInfo['level'],
+            // PERUBAHAN: Kirim boolean langsung, bukan integer
             'level_up' => $levelUp
         ];
         
@@ -786,14 +754,10 @@ public function resumeGame(): array
         $user->total_score = ($user->total_score ?? 0) + $session['score'];
         $user->experience_points = ($user->experience_points ?? 0) + ($sessionStats->total_exp ?? 0);
         
-        // ================================================================
-        // PERBAIKAN BUG STATISTIK (Temuan Anda)
-        // ================================================================
-        // Kolom ini ADA di migrasi (File 8), JADI KITA BIARKAN
+        // Kolom ini ADA di migrasi
         $user->total_questions = ($user->total_questions ?? 0) + ($sessionStats->total_questions ?? 0);
         $user->correct_answers = ($user->correct_answers ?? 0) + $session['correct_answers'];
         
-        // (Kolom-kolom ini ADA di migrasi File 8, jadi AMAN)
         $user->last_played = now(); 
 
         if ($session['max_streak'] > ($user->longest_streak ?? 0)) {
@@ -808,15 +772,14 @@ public function resumeGame(): array
     private function updateLeaderboard(User $user): void
     {
         $freshUser = $user->fresh();
-            DB::table('leaderboard')->updateOrInsert(
-                ['user_id' => $user->id],
-                [
-                    // Kolom di DB leaderboard tetap 'total_points', tapi isinya ambil dari 'total_score' user
-                    'total_points' => $freshUser->total_score,
-                    'total_exp' => $freshUser->experience_points,
-                    'last_updated' => now(),
-                ]
-            );
+        DB::table('leaderboard')->updateOrInsert(
+            ['user_id' => $user->id],
+            [
+                'total_points' => $freshUser->total_score,
+                'total_exp' => $freshUser->experience_points,
+                'last_updated' => now(),
+            ]
+        );
     }
 
     private function calculateAccuracy(array $session): float

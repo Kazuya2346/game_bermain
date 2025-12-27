@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Storage;
 use Exception;
 
 /**
- * Model untuk Soal Listening (Updated - Clean Version)
+ * Model untuk Soal Listening (Updated - File-based Audio System)
  */
 class ListeningQuestion extends Model
 {
@@ -23,8 +23,9 @@ class ListeningQuestion extends Model
         'exp_reward', 'play_count_limit',
     ];
 
+    // Audio data sekarang berisi nama file, jadi tidak perlu disembunyikan
     protected $hidden = [
-        'audio_data',
+        // 'audio_data', // Dikomentari karena sekarang hanya nama file, bukan BLOB
     ];
 
     protected $appends = [
@@ -61,23 +62,31 @@ class ListeningQuestion extends Model
     }
 
     // ==================== ACCESSORS ====================
+    /**
+     * PERUBAHAN PENTING: Audio URL untuk file-based storage
+     * 
+     * Sekarang audio_data hanya berisi nama file (string)
+     * Mengembalikan URL lengkap menggunakan asset() helper
+     */
     public function getAudioUrlAttribute(): ?string
     {
-        // Prioritas 1: Audio data base64
-        if ($this->audio_data && $this->audio_mime_type) {
-            return 'data:' . $this->audio_mime_type . ';base64,' . base64_encode($this->audio_data);
+        // PERUBAHAN: Sekarang audio_data berisi nama file, bukan BLOB
+        if (!empty($this->audio_data) && is_string($this->audio_data)) {
+            // Kembalikan URL ke file di folder publik
+            return asset('audio/listening_audios/' . $this->audio_data);
         }
 
-        // Prioritas 2: Audio path dari storage
-        if (!empty($this->audio_path) && Storage::exists($this->audio_path)) {
-            return Storage::url($this->audio_path);
-        }
+        return null;
+    }
 
-        // Prioritas 3: URL eksternal (jika ada kolom audio_url)
-        if (!empty($this->attributes['audio_url'] ?? null)) {
-            return $this->attributes['audio_url'];
+    /**
+     * Accessor untuk path lengkap file audio (untuk keperluan internal)
+     */
+    public function getAudioFilePathAttribute(): ?string
+    {
+        if (!empty($this->audio_data) && is_string($this->audio_data)) {
+            return public_path('audio/listening_audios/' . $this->audio_data);
         }
-
         return null;
     }
 
@@ -135,15 +144,78 @@ class ListeningQuestion extends Model
         return round($size, 2) . ' ' . $units[$unit];
     }
 
-    public function setAudioFromFile(string $filePath): void
+    /**
+     * PERUBAHAN: Metode untuk mengelola file audio
+     * Sekarang menyimpan file ke folder publik dan menyimpan nama file
+     */
+    public function setAudioFromFile(string $filePath, string $fileName = null): void
     {
         if (!file_exists($filePath)) {
             throw new Exception("File tidak ditemukan: {$filePath}");
         }
         
-        $this->audio_data = file_get_contents($filePath);
-        $this->audio_mime_type = mime_content_type($filePath);
-        $this->audio_size = filesize($filePath);
+        // Tentukan nama file
+        if (!$fileName) {
+            $fileName = basename($filePath);
+        }
+        
+        // Pastikan folder tujuan ada
+        $destinationDir = public_path('audio/listening_audios');
+        if (!is_dir($destinationDir)) {
+            mkdir($destinationDir, 0755, true);
+        }
+        
+        $destinationPath = $destinationDir . '/' . $fileName;
+        
+        // Salin file ke folder publik
+        if (copy($filePath, $destinationPath)) {
+            // Simpan nama file, bukan konten BLOB
+            $this->audio_data = $fileName;
+            $this->audio_mime_type = mime_content_type($filePath);
+            $this->audio_size = filesize($filePath);
+        } else {
+            throw new Exception("Gagal menyalin file ke folder publik: {$destinationPath}");
+        }
+    }
+
+    /**
+     * Hapus file audio terkait dari storage
+     */
+    public function deleteAudioFile(): bool
+    {
+        if (!empty($this->audio_data) && is_string($this->audio_data)) {
+            $filePath = public_path('audio/listening_audios/' . $this->audio_data);
+            if (file_exists($filePath)) {
+                return unlink($filePath);
+            }
+        }
+        return false;
+    }
+
+    /**
+     * PERUBAHAN: Untuk kompatibilitas dengan PostgreSQL
+     * Mengembalikan array shuffled items untuk drag & drop
+     */
+    public function getShuffledItems(): array
+    {
+        if ($this->answer_type === self::ANSWER_TYPE_DRAG_DROP_WORD || 
+            $this->answer_type === self::ANSWER_TYPE_DRAG_DROP_LETTER) {
+            
+            // Split correct answer menjadi item-item
+            $items = preg_split('/\s+/', $this->correct_answer);
+            
+            // Filter item yang kosong
+            $items = array_filter($items, function($item) {
+                return !empty(trim($item));
+            });
+            
+            // Acak urutan item
+            shuffle($items);
+            
+            return $items;
+        }
+        
+        return [];
     }
 
     // ==================== SCOPES ====================
@@ -211,5 +283,18 @@ class ListeningQuestion extends Model
             ->inRandomOrder()
             ->limit($limit)
             ->get();
+    }
+
+    /**
+     * Model events untuk menghapus file audio ketika model dihapus
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Hapus file audio ketika model dihapus
+        static::deleting(function ($question) {
+            $question->deleteAudioFile();
+        });
     }
 }
