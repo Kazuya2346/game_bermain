@@ -119,7 +119,7 @@
                         <div class="d-flex align-items-center justify-content-between">
                             <div class="d-flex align-items-center">
                                 <div class="avatar-circle me-3">
-                                    <div class="rounded-circle d-flex align-items-center justify-center bg-white text-primary font-weight-bold" 
+                                    <div class="rounded-circle d-flex align-items-center justify-content-center bg-white text-primary font-weight-bold" 
                                         style="width: 45px; height: 45px; font-size: 1.3rem;">
                                         {{ strtoupper(substr($user->name, 0, 1)) }}
                                     </div>

@@ -86,8 +86,20 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         ]);
     })->name('dashboard');
     
-    // Resource Controllers
-    Route::resource('users', UserController::class);
+    // User Management Routes
+    Route::prefix('users')->name('users.')->group(function () {
+        Route::get('/', [UserController::class, 'index'])->name('index');
+        Route::get('/create', [UserController::class, 'create'])->name('create');
+        Route::post('/', [UserController::class, 'store'])->name('store');
+        Route::get('/{user}', [UserController::class, 'show'])->name('show');
+        Route::get('/{user}/edit', [UserController::class, 'edit'])->name('edit'); // Edit single
+        Route::get('/bulk/edit', [UserController::class, 'editBulk'])->name('edit.bulk'); // Edit massal
+        Route::put('/{user}', [UserController::class, 'update'])->name('update'); // Update single
+        Route::put('/bulk/update', [UserController::class, 'bulkUpdate'])->name('bulk.update'); // Update massal
+        Route::delete('/{user}', [UserController::class, 'destroy'])->name('destroy');
+    });
+    
+    // Resource Controllers untuk Games dan Questions
     Route::resource('games', GameController::class);
     Route::resource('questions', QuestionController::class);
     

@@ -56,11 +56,21 @@ class UserController extends Controller
     }
 
     /**
-     * Show the form for editing the specified resource.
+     * Show the form for editing single user.
      */
     public function edit(User $user)
     {
-        return view('admin.users.edit', compact('user'));
+        return view('admin.users.edit-single', compact('user'));
+    }
+
+    /**
+     * Tampilkan halaman edit massal (Bulk Edit)
+     */
+    public function editBulk()
+    {
+        // Mengambil semua user agar variabel $users terdefinisi di view
+        $users = User::all(); 
+        return view('admin.users.edit', compact('users'));
     }
 
     /**
@@ -86,6 +96,50 @@ class UserController extends Controller
 
         return redirect()->route('admin.users.index')
             ->with('success', 'User berhasil diupdate!');
+    }
+
+    /**
+     * Proses update banyak user sekaligus
+     */
+    public function bulkUpdate(Request $request)
+    {
+        // Validasi dasar untuk array users
+        $request->validate([
+            'users' => 'required|array',
+            'users.*.id' => 'required|exists:users,id',
+            'users.*.name' => 'required|string|max:255',
+            'users.*.email' => 'required|email|max:255',
+            'users.*.role' => 'required|in:admin,ustadz,ustadzah,santri_putra,santri_putri',
+            'users.*.class_id' => 'nullable|string|max:255',
+            'users.*.password' => 'nullable|string|min:8',
+        ]);
+
+        $updatedCount = 0;
+
+        foreach ($request->users as $userData) {
+            $user = User::find($userData['id']);
+            
+            if ($user) {
+                // Update data dasar
+                $updateData = [
+                    'name' => $userData['name'],
+                    'email' => $userData['email'],
+                    'role' => $userData['role'],
+                    'class_id' => $userData['class_id'] ?? null,
+                ];
+
+                // Update password jika diisi
+                if (!empty($userData['password'])) {
+                    $updateData['password'] = Hash::make($userData['password']);
+                }
+
+                $user->update($updateData);
+                $updatedCount++;
+            }
+        }
+
+        return redirect()->route('admin.users.index')
+            ->with('success', $updatedCount . ' user berhasil diperbarui secara massal!');
     }
 
     /**

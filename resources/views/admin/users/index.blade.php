@@ -10,10 +10,24 @@
             <h1 class="h3 mb-1 text-gray-800 font-weight-bold">Users Management</h1>
             <p class="text-muted small mb-0">Kelola pengguna sistem pembelajaran</p>
         </div>
-        <a href="{{ route('admin.users.create') }}" class="btn btn-primary btn-lg shadow-sm">
-            <i class="fas fa-user-plus me-2"></i>Tambah Pengguna Baru
-        </a>
+        <div class="d-flex gap-2">
+            <a href="{{ route('admin.users.edit.bulk') }}" class="btn btn-warning btn-lg shadow-sm">
+                <i class="fas fa-users-cog me-2"></i>Edit Massal
+            </a>
+            <a href="{{ route('admin.users.create') }}" class="btn btn-primary btn-lg shadow-sm">
+                <i class="fas fa-user-plus me-2"></i>Tambah Pengguna Baru
+            </a>
+        </div>
     </div>
+
+    <!-- Success Messages -->
+    @if(session('success'))
+        <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+            <i class="fas fa-check-circle me-2"></i>
+            {{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
 
     <!-- Stats Cards -->
     <div class="row mb-4">
@@ -87,7 +101,17 @@
     <!-- Users Table Card -->
     <div class="card shadow-sm border-0">
         <div class="card-header bg-white py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Daftar Pengguna</h6>
+            <div class="d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">Daftar Pengguna</h6>
+                <div class="d-flex gap-2">
+                    <a href="{{ route('admin.users.edit.bulk') }}" class="btn btn-sm btn-warning">
+                        <i class="fas fa-users-cog me-1"></i>Edit Massal
+                    </a>
+                    <a href="{{ route('admin.users.create') }}" class="btn btn-sm btn-primary">
+                        <i class="fas fa-user-plus me-1"></i>Tambah User
+                    </a>
+                </div>
+            </div>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -173,8 +197,13 @@
                                 <td class="px-4 py-3 text-center">
                                     <div class="btn-group" role="group">
                                         <!-- Edit Button -->
-                                        <a href="{{ route('admin.users.edit', $user) }}" class="btn btn-sm btn-outline-primary" title="Edit">
+                                        <a href="{{ route('admin.users.edit', $user) }}" class="btn btn-sm btn-outline-primary" title="Edit User">
                                             <i class="fas fa-edit"></i>
+                                        </a>
+
+                                        <!-- View Button -->
+                                        <a href="{{ route('admin.users.show', $user) }}" class="btn btn-sm btn-outline-info" title="Lihat Detail">
+                                            <i class="fas fa-eye"></i>
                                         </a>
 
                                         <!-- Delete Button -->
@@ -207,7 +236,12 @@
             </div>
         </div>
         <div class="card-footer bg-white py-3">
-            {{ $users->links() }}
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="text-muted small">
+                    Menampilkan {{ $users->firstItem() }} - {{ $users->lastItem() }} dari {{ $users->total() }} user
+                </div>
+                {{ $users->links() }}
+            </div>
         </div>
     </div>
 </div>
