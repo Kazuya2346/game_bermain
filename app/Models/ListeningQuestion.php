@@ -235,12 +235,17 @@ class ListeningQuestion extends Model
     }
 
     public function scopeOrderByDifficulty($query, string $direction = 'asc')
-    {
-        return $query->orderByRaw(
-            "FIELD(level, ?, ?, ?) {$direction}",
-            [self::LEVEL_LOW, self::LEVEL_MEDIUM, self::LEVEL_HARD]
-        );
-    }
+{
+    // PERBAIKAN: Gunakan CASE untuk kompatibilitas PostgreSQL
+    return $query->orderByRaw(
+        "CASE level 
+            WHEN ? THEN 1 
+            WHEN ? THEN 2 
+            WHEN ? THEN 3 
+        END {$direction}",
+        [self::LEVEL_LOW, self::LEVEL_MEDIUM, self::LEVEL_HARD]
+    );
+}
 
     // ==================== STATIC METHODS ====================
     public static function getStatistics(): array

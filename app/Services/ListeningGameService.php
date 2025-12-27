@@ -292,16 +292,22 @@ class ListeningGameService
         $countToTake = min($shuffledIds->count(), $maxCount);
         $finalQuestionIds = $shuffledIds->take($countToTake)->all();
     
-        // Kolom yang diperlukan (audio_data sekarang hanya nama file)
         $columnsToSelect = [
             'id', 'level', 'question_text', 'correct_answer', 'answer_type',
             'option_a', 'option_b', 'option_c', 'option_d', 'exp_reward', 'word_count',
-            'audio_data', // Nama file audio
+            'audio_data',
         ];
+    
+        // PERBAIKAN: PostgreSQL tidak mendukung FIELD(). Gunakan CASE untuk mengurutkan ID.
+        $orderRaw = "CASE id ";
+        foreach ($finalQuestionIds as $index => $id) {
+            $orderRaw .= "WHEN {$id} THEN {$index} ";
+        }
+        $orderRaw .= "END";
     
         return ListeningQuestion::whereIn('id', $finalQuestionIds)
             ->select($columnsToSelect)
-            ->orderByRaw("FIELD(id, " . implode(',', $finalQuestionIds) . ")")
+            ->orderByRaw($orderRaw)
             ->get();
     }
 

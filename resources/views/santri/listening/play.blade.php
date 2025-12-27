@@ -870,41 +870,26 @@ function listeningGame() {
             });
         },
 
-        // Play Audio - DIPERBARUI untuk menggunakan file statis
+      
         async playAudio() {
-            if (this.isAudioLoading || !this.question.audio_url) {
-                console.warn('Cannot play audio: loading or no URL');
+            // PERBAIKAN: Gunakan audio_url yang dikirim dari Service
+            if (!this.question.audio_url) {
+                console.warn('Audio URL tidak ditemukan');
                 return;
             }
-
+            
             this.isAudioLoading = true;
-
             try {
-                const audioPlayer = this.$refs.audioPlayer;
+                const player = this.$refs.audioPlayer;
                 
-                if (!audioPlayer) {
-                    throw new Error('Audio player tidak tersedia');
-                }
-
-                // PERUBAHAN: Gunakan URL audio langsung tanpa base64 decoding
-                audioPlayer.src = this.question.audio_url;
+                // Gunakan URL lengkap langsung dari Service
+                player.src = this.question.audio_url;
                 
-                await new Promise((resolve, reject) => {
-                    audioPlayer.oncanplaythrough = resolve;
-                    audioPlayer.onerror = (e) => {
-                        console.error('Audio Playback Error:', e);
-                        reject(new Error('Gagal memuat file audio. Format mungkin tidak didukung.'));
-                    };
-                    setTimeout(() => reject(new Error('Audio memuat terlalu lama')), 10000);
-                });
-
-                await audioPlayer.play();
-                console.log('Audio playing');
-                
-            } catch (error) {
-                console.error('Error playing audio:', error);
-                this.feedback = { show: true, isCorrect: false, message: error.message };
-                setTimeout(() => this.feedback.show = false, 3000);
+                await player.play();
+                console.log('Audio playing...');
+            } catch (e) {
+                console.error("Audio Error:", e);
+                alert("Gagal memutar audio. Pastikan file tersedia di folder public.");
             } finally {
                 this.isAudioLoading = false;
             }
