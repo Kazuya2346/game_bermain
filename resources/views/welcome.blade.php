@@ -90,7 +90,6 @@
                 
                 @if (Route::has('login'))
                 <div class="hidden sm:flex items-center space-x-3">
-                    <a href="#features" class="px-4 py-2 text-gray-700 hover:text-emerald-600 font-medium transition-colors rounded-lg hover:bg-emerald-50">Fitur</a>
                     <a href="#games" class="px-4 py-2 text-gray-700 hover:text-emerald-600 font-medium transition-colors rounded-lg hover:bg-emerald-50">Games</a>
                     
                     @auth

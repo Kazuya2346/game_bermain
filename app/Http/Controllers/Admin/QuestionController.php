@@ -25,6 +25,23 @@ class QuestionController extends Controller
     public function create()
     {
         $games = Game::all();
+        
+        // ✅ FIX: Cek jika ada game_id di URL parameter
+        if (request()->has('game_id')) {
+            $game = Game::findOrFail(request('game_id'));
+            
+            // Location options untuk kosakata_tempat atau percakapan
+            $locationOptions = [
+                'Di Masjid', 'Di Sekolah', 'Di Rumah', 'Di Pasar', 'Di Toko',
+                'Di Rumah Sakit', 'Di Kantor', 'Di Taman', 'Di Perpustakaan',
+                'Di Restoran', 'Di Bandara', 'Di Stasiun', 'Di Terminal',
+                'Di Pantai', 'Di Gunung', 'Di Kebun', 'Di Kelas', 'Di Lapangan',
+                'Di Bank', 'Di Pos', 'Di Salon', 'Di Bengkel', 'Di Hotel'
+            ];
+            
+            return view('admin.questions.create', compact('games', 'game', 'locationOptions'));
+        }
+        
         return view('admin.questions.create', compact('games'));
     }
 
@@ -50,8 +67,14 @@ class QuestionController extends Controller
 
         Question::create($validated);
 
+        // ✅ FIX: Redirect ke detail game jika ada game_id
+        if ($request->game_id) {
+            return redirect()->route('admin.games.show', $request->game_id)
+                ->with('success', 'Pertanyaan berhasil ditambahkan!');
+        }
+
         return redirect()->route('admin.questions.index')
-            ->with('success', 'Soal berhasil ditambahkan!');
+            ->with('success', 'Pertanyaan berhasil ditambahkan!');
     }
 
     /**
@@ -98,8 +121,9 @@ class QuestionController extends Controller
 
         $question->update($validated);
 
-        return redirect()->route('admin.questions.index')
-            ->with('success', 'Soal berhasil diupdate!');
+        // ✅ FIX: Redirect ke detail game
+        return redirect()->route('admin.games.show', $question->game_id)
+            ->with('success', 'Pertanyaan berhasil diupdate!');
     }
 
     /**
@@ -107,6 +131,9 @@ class QuestionController extends Controller
      */
     public function destroy(Question $question)
     {
+        // Simpan game_id sebelum question dihapus
+        $gameId = $question->game_id;
+        
         // Delete image if exists
         if ($question->image_path) {
             Storage::disk('public')->delete($question->image_path);
@@ -114,7 +141,8 @@ class QuestionController extends Controller
 
         $question->delete();
 
-        return redirect()->route('admin.questions.index')
-            ->with('success', 'Soal berhasil dihapus!');
+        // ✅ FIX: Redirect ke detail game
+        return redirect()->route('admin.games.show', $gameId)
+            ->with('success', 'Pertanyaan berhasil dihapus!');
     }
 }
